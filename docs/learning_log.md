@@ -314,3 +314,305 @@ This log records real learning interactions, mental model corrections, and first
 * **Citi Interview Takeaway**: When asked about Decision Trees, explain that they can capture non-linear relationships and interactions without scaling features. However, default untuned trees are highly prone to overfitting because they grow until leaf nodes are pure. Highlight that a Train $R^2$ of 1.0 combined with a negative Test $R^2$ is the classic signature of overfitting, and explain that feature importance measures predictive association within the model, not physical causation.
 
 ---
+
+### Entry 012: Scientific ML Problem Definition and Target Integrity
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we formulate a machine learning task from first principles and systematically identify target leakage and confounding risks in observational survey data?
+* **What Actually Happened**:
+  1. Audited processed columns (`data/processed/mxmh_cleaned.csv`) and compared them to raw columns to trace transformations, missing value handling, and potential information losses.
+  2. Analyzed all 5 wellbeing variables (`Anxiety`, `Depression`, `Insomnia`, `OCD`, `Music effects`) for suitability as targets, documenting their types, range, observations, leakage risks, and limitations.
+  3. Formulated the task as a regression problem to predict the continuous Anxiety score (0-10) directly.
+  4. Constructed a documented feature-role table grouping inputs into Demographics, Music Behaviour, Music Preferences, Listening Context, and Exclusions.
+  5. Performed a detailed leakage audit, explicitly separating direct target leakage from indirect leakage (e.g., using `Depression` or `Insomnia` to predict `Anxiety`).
+  6. Authored the technical guide [`docs/05_ml_problem_definition.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/05_ml_problem_definition.md).
+  7. Appended Entry 012 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Association vs Prediction vs Causation**: Association measures correlation between $X$ and $Y$ ($\text{Corr}(X, Y) \neq 0$). Prediction evaluates out-of-sample mapping $\hat{Y} = f(X)$ on unseen test data. Causation proves that intervening on $X$ directly changes $Y$ ($P(Y \mid \text{do}(X))$). In observational datasets, we can only model Association and Prediction, not Causation.
+  - **Indirect Leakage Risk**: Concurrent target variables like `Depression` and `Insomnia` are strongly associated with `Anxiety`. Including them as features produces artificially high performance during validation but represents leakage, as concurrent symptom profiles are not available at query time when trying to predict anxiety from music habits alone.
+  - **Feature Selection Sequence**: Feature selection and leakage analysis must occur *before* model training and comparison. If we train models on leaked features, we compare overfitting capacities rather than true generalizable relationships.
+* **Code Example**:
+  ```python
+  # Defining features and target explicitly to prevent target leakage
+  import pandas as pd
+
+  df = pd.read_csv("data/processed/mxmh_cleaned.csv")
+  y = df["Anxiety"]
+
+  # Exclude other concurrent mental health targets to prevent target leakage
+  leakage_cols = ["Anxiety", "Depression", "Insomnia", "OCD"]
+  X = df.drop(columns=leakage_cols)
+  ```
+* **Citi Interview Takeaway**: When asked about setting up a machine learning problem, show your scientific rigor. Explain that you split features from targets first, perform a target leakage audit to exclude concurrent target-correlated variables, and frame the regression or classification task based on the target's natural distribution. Always emphasize the strict distinction between prediction ($P(Y \mid X)$) and causal intervention ($P(Y \mid \text{do}(X))$).
+
+---
+
+### Entry 013: Model Pipeline Validation and Generalization Metrics
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we systematically validate baseline model pipelines, calculate generalization gaps, and interpret performance differences without causal overreach?
+* **What Actually Happened**:
+  1. Verified target existence (`Anxiety` in `mxmh_cleaned.csv`), and confirmed exclusions of IDs, metadata, and concurrent target columns to prevent leakage.
+  2. Verified train/test split (80% train, 20% test: 588 train, 148 test) with preprocessing fitted strictly on `X_train`.
+  3. Computed naive mean baseline predictions on the test set (always predicting the training mean `5.8452`).
+  4. Evaluated Linear Regression and Decision Tree pipelines, comparing their test and train metrics.
+  5. Computed generalization gaps (Test RMSE - Train RMSE): Linear Regression = 0.2825, Decision Tree = 4.1258.
+  6. Generated three verification plots saved under `docs/figures/` (best_model_actual_vs_predicted.png, model_performance_comparison.png, and best_model_residuals_distribution.png).
+  7. Authored the documentation [`docs/06_model_baselines.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/06_model_baselines.md).
+  8. Appended Entry 013 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Naive Baseline Value**: A naive baseline sets the boundary for predictive utility. If a complex model cannot beat always predicting the mean, it has zero value.
+  - **Train/Test Separation**: Fitting preprocessing parameters (like mean and variance for standardization) strictly on training data is critical. Otherwise, test set statistics leak into training, causing optimistic bias.
+  - **Overfitting and Generalization Gap**: A high Train $R^2$ (1.0000) coupled with a negative Test $R^2$ (-1.1078) is the classic signature of overfitting. The generalization gap quantitatively represents this memorization vs generalization trade-off.
+  - **Prediction vs Causation**: A regression model's predictive ability indicates that feature values carry information associated with the target, but does not prove that changing a feature's value (e.g. changing music habits) causes changes in the target.
+* **Code Example**:
+  ```python
+  # Calculate generalization gap
+  generalization_gap = test_rmse - train_rmse
+  print(f"Generalization Gap (RMSE): {generalization_gap:.4f}")
+  ```
+* **Citi Interview Takeaway**: In quant and modeling interviews, explain that you validate pipelines by first establishing a naive mean baseline. Walk through how you calculate the generalization gap (Test RMSE - Train RMSE) to diagnose overfitting, and explain why test performance is the only unbiased metric for evaluation. Clarify that prediction models evaluate association and out-of-sample mapping, never causation.
+
+---
+
+### Entry 014: Interpretation of Baseline Modeling Performance
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we interpret baseline model performance, explain perfect training scores (MAE = 0.0000), and compare complex models against simpler models fairly?
+* **What Actually Happened**:
+  1. Audited the training and testing metrics of the baseline models (Naive Mean, Linear Regression, and Decision Tree).
+  2. Analyzed why the untuned Decision Tree achieved a training MAE of `0.0000` (perfect fit) but a test MAE of `3.3480` ($R^2 = -1.1078$).
+  3. Formulated the generalization gap concept to represent how well a model generalizes to unseen test data versus memorizes training data.
+  4. Compared Linear Regression and Decision Tree on test set metrics, showing that the simpler Linear Regression model outperformed the more complex Decision Tree.
+  5. Updated [`docs/06_model_baselines.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/06_model_baselines.md) with conservative scientific framing.
+  6. Appended Entry 014 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Zero Training Error Interpretation**: A training MAE of 0.0000 means the model made zero prediction errors on the data it was trained on. However, this does not mean the model is "good". It simply means the model has enough capacity to memorize the dataset completely (e.g., unconstrained decision tree depth).
+  - **Test Performance Significance**: Unseen test performance is the only true measure of generalization. If a model overfits, it captures random noise and specific quirks of the training observations rather than generalizable signals.
+  - **Complexity and Overfitting**: Increasing model complexity (e.g. going from a linear baseline to an untuned decision tree) increases the model's variance, making it highly susceptible to overfitting when the signal-to-noise ratio in the features is low.
+  - **Baseline Reference Point**: Naive baselines (like predicting training mean) are essential. If a model gets a negative R² on test data, it means it is performing worse than a zero-intelligence mean predictor.
+* **Code Example**:
+  ```python
+  # Assessing model generalization by comparing train vs test performance
+  train_r2 = dt_pipeline.score(X_train, y_train)  # 1.0000
+  test_r2 = dt_pipeline.score(X_test, y_test)    # -1.1078
+  overfitting_flag = train_r2 > 0.9 and test_r2 < 0.0
+  print(f"Is model overfitting? {overfitting_flag}")
+  ```
+* **Citi Interview Takeaway**: In quantitative interviews, explain that a training error of zero (MAE = 0.0) is a major red flag indicating a model that has memorized the training set. Walk through how you compare test set metrics to a naive baseline (predicting target mean) to evaluate actual predictive signal, and why you prefer simpler models (like regularized linear models) over complex untuned ones when features contain high noise.
+
+---
+
+### Entry 015: Model Selection Integrity and Error Analysis
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we verify model-selection leakage, analyze residual compression around the target mean, and evaluate weak predictive signals from first principles?
+* **What Actually Happened**:
+  1. Performed a model selection audit verifying that `max_depth=3` was chosen using 5-fold cross-validation on `X_train` with the test set kept strictly untouched.
+  2. Evaluated our candidate model on the held-out test set (MAE = 2.2603, RMSE = 2.7499, $R^2$ = 0.0636).
+  3. Audited prediction ranges: actual values span 0 to 10 ($\sigma = 2.85$) while predictions are compressed to a narrow band between 3.03 and 8.20 ($\sigma = 0.98$).
+  4. Diagnosed that the model systematically overpredicts low anxiety scores (0-2) and underpredicts high scores (8-10) because a shallow tree (8 leaves) cannot split deeply enough to isolate extremes without overfitting.
+  5. Updated [`docs/07_model_tuning.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/07_model_tuning.md) with error analysis, limitations, modeling conclusion, and interview prep.
+  6. Updated [`docs/model_comparison.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/model_comparison.md) and [`docs/challenges.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/challenges.md).
+  7. Appended Entry 015 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Unbiased Holdout Integrity**: Confirming that the test set was not used to choose `max_depth` protects our model evaluation from selection bias, turning our positive test $R^2$ (+0.0636) into a legitimate strength.
+  - **Weak Predictive Signal**: A low test $R^2$ is not an implementation failure. A correctly written model (no leakage, sound math) will still have low predictive power if the available survey features simply do not contain enough information to predict the target.
+  - **Prediction Compression**: Limiting tree depth to prevent overfitting forces the tree to average training targets in a small number of leaves. This pulls predictions toward the overall sample mean, compressing prediction variance and systematically underpredicting extreme outcomes.
+  - **Bias-Variance Trade-off**: Decreasing model complexity (depth limit) reduces variance (overfitting) but increases bias (inability to fit extreme values), which is a necessary trade-off when signal-to-noise ratios are low.
+* **Code Example**:
+  ```python
+  # Check prediction compression by comparing standard deviations
+  pred_std = pd.Series(y_pred).std()  # 0.9842
+  actual_std = y_test.std()           # 2.8514
+  print(f"Prediction Compression Ratio: {pred_std / actual_std:.2%}")
+  ```
+* **Citi Interview Takeaway**: In quantitative finance and data science interviews, explain that a mathematically correct model will still yield a low $R^2$ if the features lack predictive power. Discuss prediction compression: regularizing a decision tree by limiting depth reduces its variance and prevents overfitting, but it also causes predictions to cluster around the mean, resulting in systematic underprediction of extreme outcomes.
+
+---
+
+### Entry 016: Final Analysis and Project Conclusion Takeaways
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we synthesize our entire modeling pipeline, interpret weak predictive signals, and formulate a solid interview story?
+* **What Actually Happened**:
+  1. Compiled final model comparison results for Naive Mean, OLS Linear Regression, and Decision Trees.
+  2. Conducted a technical audit verifying that the best candidate (`max_depth=3`) was selected strictly using cross-validation on `X_train` with the test set held out entirely.
+  3. Authored the comprehensive summary [`docs/08_final_analysis.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/08_final_analysis.md).
+  4. Created [`docs/interview/project_story.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/interview/project_story.md) to serve as a verbal guide for interviews.
+  5. Updated `README.md`, `docs/decision_log.md` (Decisions 007–010), and `docs/challenges.md`.
+  6. Appended Entry 016 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Overfitting & Complexity Limits**: An unregularized model overfits by capturing random noise in high-dimensional representations. We successfully controlled variance by pre-pruning (`max_depth=3`), establishing a positive out-of-sample Test $R^2$ of `0.0636`.
+  - **Generalization & Cross-Validation**: Validation on a single split is susceptible to partition noise. K-fold cross-validation provides stable out-of-sample estimates that align closely with test set results.
+  - **Weak Predictive Signal Interpretation**: Reporting a weak predictive signal ($R^2 \approx 0.06$) honestly is a strength, not a failure. It indicates that daily music habits alone do not explain the majority of subjective anxiety variance, highlighting the need to collect longitudinal confounders (work stress, clinical background).
+  - **Prediction vs. Causation**: In observational, cross-sectional datasets, models estimate predictive association ($P(Y \mid X)$), but cannot determine temporal order or establish causality ($P(Y \mid \text{do}(X))$).
+* **Code Example**:
+  ```python
+  # Unbiased final model scoring
+  test_score = dt_pipeline.score(X_test, y_test)
+  print(f"Final Unbiased Test R²: {test_score:.4f}")
+  ```
+* **Citi Interview Takeaway**: In quantitative and modeling reviews, describe the entire project journey in a structured format: explain why you established naive baselines, how you diagnosed tree overfitting, how you controlled model complexity, and why you report a positive but weak predictive signal honestly. Distinguish prediction from causal inference to show statistical maturity.
+
+---
+
+### Entry 017: Model Selection, Holdout Evaluation, and Interpretability
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we formulate technical reasoning for selecting the candidate model, execute holdout set evaluation, analyze residuals, and extract feature importances under strict scientific boundaries?
+* **What Actually Happened**:
+  1. Created [`docs/model_selection.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/model_selection.md) to compare Naive Mean, Linear Regression, and Decision Tree estimators and justify selecting the regularized tree (`max_depth=3`).
+  2. Created and fully executed [`notebooks/09_final_model_evaluation.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/09_final_model_evaluation.ipynb) to fit the candidate pipeline on the training partition and test on the holdout partition.
+  3. Computed final holdout test metrics: MAE = 2.2603, RMSE = 2.7499, $R^2$ = 0.0636, validating that the shallow tree outperforms the naive baseline (Test $R^2$ = -0.0004) and OLS Linear Regression (Test $R^2$ = -0.0261).
+  4. Conducted error analysis, identifying that prediction outputs are compressed near the target mean because the tree only has 8 leaf averages.
+  5. Created [`docs/08_model_interpretability.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/08_model_interpretability.md) and [`notebooks/10_model_interpretability.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/10_model_interpretability.ipynb) extracting the active feature importances: `Hours per day` (40.54%), `Age` (29.83%), and `Music effects_Improve` (29.63%).
+  6. Updated `docs/challenges.md` to format the modeling challenges into the required structured layout.
+  7. Appended Entry 017 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Authoritative Model Selection**: Choosing a candidate configuration must balance average prediction error (MAE), large error penalties (RMSE), and the generalization gap. OLS and default trees overfit the sparse one-hot categorical boundaries, while the regularized tree minimizes out-of-sample error.
+  - **Residual Compression Mechanics**: A regularized regression tree predicts the average target value of its leaves. Because depth is limited, predictions cluster near the sample mean, causing systematic overprediction of low targets and underprediction of high targets.
+  - **Gini Importance vs. Causality**: Gini feature importance measures variance reduction during training. In cross-sectional studies, this represents predictive association inside the tree structure, and does not establish that changing daily listening habits causes changes in mental symptoms.
+* **Code Example**:
+  ```python
+  # Extract active features that reduced target MSE during splits
+  importances = dt_model.feature_importances_
+  active_features = [name for name, imp in zip(all_feature_names, importances) if imp > 0]
+  print("Active splitting features:", active_features)
+  ```
+* **Citi Interview Takeaway**: In quant modeling reviews, explain that you evaluate candidate models on holdout sets using a combination of average prediction error (MAE) and large error penalties (RMSE) relative to naive baselines. Walk through how you extract feature importances using Gini impurity reduction, and emphasize that these importances indicate predictive association rather than causal physical relationships.
+
+---
+
+### Entry 018: Research Insights, Robustness Checks, and Causal Limitations
+* **Date**: 2026-08-26
+* **Question / Problem**: How do we extract robust statistical associations, verify their sensitivity to outliers and preprocessing decisions, and explain observational limitations from first principles?
+* **What Actually Happened**:
+  1. Created and fully executed [`notebooks/11_research_insights.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/11_research_insights.ipynb) evaluating relationships between age, listening hours, perceived effects, and anxiety.
+  2. Authored [`docs/09_research_insights.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/09_research_insights.md) detailing correlations and group averages.
+  3. Conducted targeted robustness checks, proving that correlations are stable when dropping listening outliers ($\le 12$ hours) or elderly leverage points ($\le 70$ years).
+  4. Performed an imputation audit, showing that median BPM imputation did not distort the correlation between BPM and Anxiety ($\Delta \rho = 0.0045$ compared to row deletion).
+  5. Authored [`docs/10_robustness_and_limitations.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/10_robustness_and_limitations.md) separating data, model, and scientific interpretation limits.
+  6. Updated `docs/challenges.md` with the median imputation covariance audit challenge.
+  7. Updated `docs/decision_log.md` (Decisions 013–014).
+  8. Appended Entry 018 in `docs/learning_log.md`.
+* **Discoveries Made During This Session**:
+  - **Weak Linear Correlations**: Continuous listening behaviors (`Hours per day` $\rho = 0.0493$, `BPM` $\rho = 0.0512$) have almost zero linear correlation with anxiety, explaining why OLS failed. The Decision Tree's capacity to split on these features non-linearly allows it to capture weak non-linear predictive boundaries.
+  - **Reverse Causality in Self-Reports**: The average anxiety score of respondents who report that music "improves" their wellbeing is actually higher (`6.03`) than those reporting "no effect" (`5.12`). This suggests that individuals experiencing elevated baseline symptoms are more likely to seek out music to cope, which is a classic confounding indicator.
+  - **Imputation Robustness**: Comparing a median-imputed correlation against a raw row-deletion correlation is a powerful way to verify that imputation choices did not distort the underlying covariance structure.
+  - **Observational Causal Limits**: Observational cross-sectional surveys have no controlled interventions and cannot establish temporal sequence. Thus, we can only prove prediction and association, not clinical causation.
+* **Code Example**:
+  ```python
+  # Check correlation stability after filtering out outliers
+  filtered_corr = df[df["Hours per day"] <= 12]["Hours per day"].corr(df["Anxiety"])
+  print(f"Robust Correlation: {filtered_corr:.4f}")
+  ```
+* **Citi Interview Takeaway**: In quantitative finance and data science interviews, demonstrate statistical maturity by highlighting how you audited your data cleaning choices. Explain how you ran robustness checks (like comparing correlation stability before and after dropping leverage points) to prove that your conclusions were not driven by outliers or imputation bias. Explicitly state the boundaries of observational data and why we cannot infer clinical causation.
+
+---
+
+### Entry 019: Music Data & Listening Intelligence Layer Implementation
+* **Date**: 2026-08-27
+* **Question / Problem**: How do we construct a clean, scalable music intelligence foundation (audio feature scaling, 30-min gap sessionization, cyclical temporal encodings, K-Means acoustic clustering, user music profiling) without disturbing existing survey ML foundations or overclaiming clinical diagnoses?
+* **What Actually Happened**:
+  1. Generated `data/raw/spotify/tracks.csv` (500 tracks across 10 genres) and synthetic listening history log `data/processed/music/listening_history.csv` (1,000 timestamped events, explicitly marked `data_type="synthetic/demo"`).
+  2. Implemented `src/data/music_loader.py` for schema validation, deduplication, and chronological sorting.
+  3. Implemented `src/features/music_features.py` for $[0,1]$ feature range clipping, tempo normalization ($\text{BPM}/250$), and `StandardScaler` standard scaling.
+  4. Implemented `src/features/sessions.py` for 30-minute inactivity gap sessionization ($\Delta t > 30\text{ mins}$) and positional intra-session tracking.
+  5. Implemented `src/features/temporal.py` for cyclical sine and cosine encodings ($\sin(2\pi h / 24), \cos(2\pi h / 24)$) for hour and day of week.
+  6. Implemented `src/features/clustering.py` for Silhouette Score ($S_i$) & Elbow inertia evaluation ($K \in [2, 8]$) and human-readable **Acoustic Profile** centroid description.
+  7. Implemented `src/features/user_profile.py` for quantitative user listening habit aggregation.
+  8. Authored and fully executed [`notebooks/12_music_intelligence_eda.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/12_music_intelligence_eda.ipynb), generating all figures in `docs/figures/`.
+  9. Authored technical documentation: `docs/12_music_intelligence.md`, `docs/spotify_brain_analysis.md`, and `docs/data_sources.md`.
+  10. Built isolated unit test suite in `tests/` passing all 14 unit tests cleanly.
+* **Discoveries Made During This Session**:
+  - **Feature Scale Dominance in K-Means**: Unscaled tempo (40-220 BPM) variance is $\approx 400\times$ higher than bounded audio descriptors (0-1). Standardizing features using `StandardScaler` ensures all feature dimensions contribute equally to Euclidean distance.
+  - **Temporal Continuity via Sine/Cosine**: Linear hour representations ($0-23$) create an artificial gap of $|23 - 0| = 23$ between 11 PM and midnight. Mapping onto a 2D unit circle eliminates this boundary jump.
+  - **Session Boundary Heuristics**: Applying a 30-minute inactivity threshold converts unorganized timestamp logs into behavioral listening episodes, enabling session duration and positional analysis.
+  - **Scientific Non-Clinical Safeguards**: Audio clusters measure physical sound structure (tempo, spectral energy, acousticness). They must be named **"Acoustic Profiles"**, strictly avoiding medical/clinical mood diagnoses.
+* **Code Example**:
+  ```python
+  # Cyclical temporal encoding for hour
+  hour_rad = 2.0 * np.pi * df["hour"] / 24.0
+  df["hour_sin"] = np.sin(hour_rad)
+  df["hour_cos"] = np.cos(hour_rad)
+  ```
+* **Citi Interview Takeaway**: "When extending a production machine learning system with temporal and multi-dimensional feature layers, preserve strict data separation boundaries. Explain how you standardized features to prevent scale dominance in K-Means clustering, cyclically encoded periodic temporal variables to eliminate artificial midnight boundary jumps, and maintained strict scientific integrity by labeling clusters as physical audio profiles rather than clinical mood diagnoses."
+
+---
+
+### Entry 020: Personalized Music Recommendation Engine Implementation
+* **Date**: 2026-08-27
+* **Question / Problem**: How do we build a transparent, explainable content-based recommendation engine matching user profile vectors against candidate track audio features, combining geometric similarity with acoustic cluster shares while preserving non-causal scientific boundaries?
+* **What Actually Happened**:
+  1. Implemented `src/recommendation/candidate_retrieval.py` for context pre-filtering (genre, explicit content, tempo bounds).
+  2. Implemented `src/recommendation/similarity.py` enforcing strict feature alignment `RECOMMENDATION_FEATURES = ["energy", "valence", "danceability", "acousticness", "instrumentalness", "tempo_norm"]`, Euclidean distance calculation, and bounded similarity transformation ($S = 1 / (1 + D)$).
+  3. Implemented `src/recommendation/ranking.py` for acoustic profile cluster compatibility scoring, weighted score ranking ($0.7 \times \text{similarity} + 0.3 \times \text{profile\_score}$), and post-ranking cluster diversity filtering.
+  4. Implemented `src/recommendation/recommender.py` for top-N recommendation pipeline execution and deterministic machine-readable explanation generation.
+  5. Authored and fully executed [`notebooks/13_recommendation_engine.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/13_recommendation_engine.ipynb), generating plots in `docs/figures/`.
+  6. Authored technical documentation [`docs/13_recommendation_engine.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/13_recommendation_engine.md).
+  7. Built comprehensive unit test suite `tests/test_recommendation.py`, passing all 21 unit tests cleanly (14 Phase 1 + 7 Phase 2 tests).
+  8. Updated `docs/challenges.md` with feature order alignment and empty candidate pool challenges.
+  9. Updated `docs/decision_log.md` (Decisions 019–022) and updated `README.md`.
+* **Discoveries Made During This Session**:
+  - **Vector Order Alignment**: User profile dictionary extraction must follow the exact column order of track matrices to prevent silent Euclidean distance corruption.
+  - **Euclidean Distance vs Cosine Similarity**: In standardized feature space ($\mu=0, \sigma=1$), feature magnitude reflects absolute acoustic intensity. Euclidean distance preserves this physical difference, whereas cosine similarity ignores magnitude.
+  - **Decoupled Explanation Architecture**: Generating deterministic Python explanations first ensures recommendation logic is 100% reliable and fast before passing results to future LLM explanation layers.
+  - **Non-Causal Wellbeing Boundary**: Recommendation rankings match user acoustic preferences and context. We explicitly avoid overclaims like *"Song X treats anxiety"*.
+* **Code Example**:
+  ```python
+  # Euclidean distance to similarity score
+  distances = np.sqrt(np.sum((candidate_matrix - user_vector)**2, axis=1))
+  similarity_scores = 1.0 / (1.0 + distances)
+  ```
+* **Citi Interview Takeaway**: "When building content-based recommendation systems, decouple candidate retrieval from similarity ranking. Explain how you standardized features using `StandardScaler` to prevent high-variance variables from dominating Euclidean distance calculations, combined continuous vector similarity with discrete habit cluster shares, and maintained strict scientific integrity by framing recommendations around preference compatibility rather than clinical causation."
+
+---
+
+### Entry 021: Spotify API Integration Layer & Adapter Architecture Implementation
+* **Date**: 2026-08-27
+* **Question / Problem**: How do we build a secure, modular Spotify API integration layer (OAuth 2.0, Web API HTTP client, data mapping adapter, dual real/demo execution pipeline) that retrieves real user streams and maps them into our internal schema without modifying Phase 1 or Phase 2 foundations?
+* **What Actually Happened**:
+  1. Updated `.gitignore` to ignore `.env` files and created `.env.example` placeholder template.
+  2. Implemented `src/spotify/spotify_auth.py` for OAuth 2.0 authorization URL generation, code exchange, access token caching, and `invalid_grant` error handling.
+  3. Implemented `src/spotify/spotify_client.py` for GET `/v1/me`, `/v1/me/player/recently-played`, `/v1/tracks` calls with HTTP 401 token refresh retries and HTTP 429 `Retry-After` backoff logic.
+  4. Implemented `src/spotify/spotify_mapper.py` mapping raw Spotify JSON to internal DataFrame schema (`event_id`, `user_id`, `track_id`, `played_at`, `source="spotify_api"`, `data_type="real"`) and `AudioFeatureProvider` fallback adapter.
+  5. Implemented `src/spotify/spotify_pipeline.py` coordinating end-to-end data ingestion, Phase 1 sessionization/temporal/user-profiling, and Phase 2 recommendation execution.
+  6. Built comprehensive unit test suite `tests/test_spotify.py` with mocked HTTP responses, passing all 28 unit tests cleanly (14 Phase 1 + 7 Phase 2 + 7 Phase 3 tests).
+  7. Authored and fully executed [`notebooks/14_spotify_integration_demo.ipynb`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/notebooks/14_spotify_integration_demo.ipynb), generating plots in `docs/figures/`.
+  8. Authored technical documentation [`docs/14_spotify_integration.md`](file:///c:/Users/aksha/OneDrive/Desktop/music-brain-wellbeing/docs/14_spotify_integration.md).
+  9. Updated `docs/challenges.md`, `docs/decision_log.md`, and `README.md`.
+* **Discoveries Made During This Session**:
+  - **Adapter Isolation**: Isolating API JSON key names (`items[].track.name`) inside `spotify_mapper.py` ensures downstream feature scaling, clustering, and ranking modules require zero modification when integrating external APIs.
+  - **Observed Window Constraint**: GET `/v1/me/player/recently-played` returns up to 50 recent play events ($\approx$ 2–3 days of stream history). It must be treated as an observed window, not an unlimited lifetime archive.
+  - **Rate Limit & Token Refresh Resilience**: Automating 401 token refreshes and 429 exponential backoff retries ensures high pipeline resilience against external API failures.
+* **Code Example**:
+  ```python
+  # Map external API JSON to internal schema with explicit provenance
+  df_internal = map_recently_played_to_internal(
+      spotify_json,
+      user_id="USR_SPOTIFY_LIVE",
+      source="spotify_api",
+      data_type="real"
+  )
+  ```
+* **Citi Interview Takeaway**: "When integrating external APIs into a production machine learning application, apply the Adapter Pattern to isolate third-party JSON schemas from internal data models. Explain how you secured credentials with OAuth 2.0 and environment variables, implemented automated token refreshes and rate-limit backoffs, and provided dual REAL/DEMO execution modes so unit test suites run deterministically offline."
+
+---
+
+### Entry 022: The Scientific Significance of Low R² and Project Evolution
+* **Date**: 2026-08-27
+* **Question / Problem**: Why was the MXMH supervised anxiety prediction model necessary if our system ultimately evolved into a personalized music recommendation engine, and why is an $R^2 = 0.0636$ an essential scientific finding rather than a failure?
+* **What Actually Happened**:
+  1. Formulated a supervised regression problem ($f(X) \to y$) on 736 survey records to test whether music listening duration, context, and preferred genres contained sufficient statistical signal to predict self-reported anxiety.
+  2. Tuned a Decision Tree Regressor to `max_depth=3` via 5-fold cross-validation, achieving Test $R^2 = 0.0636$ (RMSE = 2.7499).
+  3. Identified that music listening characteristics alone explain only ~6.4% of the variance in anxiety, leaving 93.6% of variance unexplained (likely driven by unmeasured confounders like work stress, genetics, and clinical background).
+  4. Recognized that this low $R^2$ serves as a critical empirical constraint: it proves that music data cannot be used to diagnose or predict mental health states.
+  5. Evolved the system away from speculative anxiety prediction toward **Personalized Music Intelligence & Recommendation**, analyzing individual Spotify listening streams to recommend compatible tracks based on objective acoustic similarity and habit profiles.
+  6. Clarified the architectural data boundary: MXMH survey data and Spotify streaming logs are distinct data sources with **no row-level join**.
+* **Discoveries Made During This Session**:
+  - **The Value of Negative / Weak Findings**: In empirical machine learning, discovering that a feature set has weak predictive signal prevents the deployment of irresponsible or unscientific models.
+  - **Non-Clinical System Framing**: Establishing this boundary ensured that all downstream recommendations and explanations are framed around musical preference compatibility and observational research, never as clinical psychiatric diagnoses or digital treatments.
+* **Code Example**:
+  ```python
+  # Supervised ML problem formulation
+  # X: Music listening characteristics, y: Self-reported anxiety (0-10)
+  # Result: Test R² = 0.0636 -> Informs non-clinical recommendation boundary
+  ```
+* **Citi Interview Takeaway**: "When asked why I built the MXMH model before building a recommender, I explain that it tested the initial hypothesis that music habits could predict anxiety. Discovering a weak predictive signal ($R^2 = 0.0636$) was a critical finding that prevented me from building a flawed system claiming to diagnose mental health. Instead, it motivated our pivot toward personalized music intelligence and explainable content-based recommendation."
+
+

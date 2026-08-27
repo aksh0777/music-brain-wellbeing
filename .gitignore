@@ -14,6 +14,11 @@ __pycache__/
 # Scratch directory
 scratch/
 
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
 # OS specific files
 .DS_Store
 Thumbs.db
