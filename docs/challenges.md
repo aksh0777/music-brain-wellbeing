@@ -309,6 +309,31 @@ Unsupervised clustering parameters ($K$) must be dynamically bounded by sample s
 ### Interview Explanation
 "When building integration tests for our Spotify pipeline using small test catalogs, K-Means failed because $N=2$ was smaller than $K=4$. I diagnosed this edge case and resolved it by dynamically bounding $K = \min(4, N)$, ensuring the pipeline runs robustly across datasets of any size."
 
+---
+
+## Phase 4: Research-Grounded RAG Layer
+
+### Challenge: Preventing Metadata Serialization Crashes in Local ChromaDB Vector Store
+
+### WHAT
+ChromaDB vector insertion raised metadata schema validation errors when attempting to insert structured research document objects containing complex Python types (such as `list` of author names).
+
+### WHY
+ChromaDB requires metadata dictionary values to be primitive types (`str`, `int`, `float`, `bool`). Complex structures like `authors: ["Lu G", "Jia R"]` or `None` values break ChromaDB's native SQLite storage handler.
+
+### DIAGNOSIS
+Running initial ingestion tests with raw research records threw a type validation exception from `chromadb.api.types`.
+
+### SOLUTION
+Implemented a `_clean_metadata()` helper method in `src/rag/vector_store.py` that converts list attributes into comma-separated strings (`authors_str = ", ".join(authors)`) and converts non-primitive types into clean strings prior to vector upsert.
+
+### LEARNING
+Vector databases enforce strict primitives on payload metadata to optimize indexing performance; always serialize complex object fields into primitive scalar types before vector database insertion.
+
+### INTERVIEW ANSWER
+"When persisting research paper metadata into local ChromaDB collections, vector insertion failed due to un-serialized list objects in document records. I diagnosed the type validation error in ChromaDB's storage engine and resolved it by implementing a metadata sanitization pre-processor that converts lists and complex objects into primitive scalar types (`authors_str`), ensuring clean, idempotent vector storage."
+
+
 
 
 

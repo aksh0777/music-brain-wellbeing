@@ -254,5 +254,46 @@ Every major technical decision made in the **Music, Brain & Wellbeing** project 
 * **Why Not Alternative**: Fails CI/CD automated test suites whenever live tokens expire.
 * **Tradeoff**: Requires maintaining a mock payload generator, but guarantees 100% test reproducibility.
 
+---
+
+### Decision 026: Local Persistent Vector Store (ChromaDB) over Cloud Vector DB
+* **Date**: 2026-08-28
+* **Decision**: Deploy ChromaDB as a local persistent vector database at `data/vector_store/chroma/` using HNSW cosine distance indexing rather than managed cloud vector databases (Pinecone, Qdrant Cloud).
+* **Why**: Keeps the RAG retrieval layer fully self-contained, offline-capable, and zero-cost, while ensuring full developer control over index persistence.
+* **Alternative**: Use cloud vector database APIs (Pinecone).
+* **Why Not Alternative**: Introduces network latency, API key management overhead, and external cloud service dependencies for a research demonstration system.
+* **Tradeoff**: Local vector store depends on local disk space, but provides instant offline execution and zero subscription cost.
+
+---
+
+### Decision 027: Use `sentence-transformers/all-MiniLM-L6-v2` Dense Embedding Model
+* **Date**: 2026-08-28
+* **Decision**: Standardize on `sentence-transformers/all-MiniLM-L6-v2` for generating 384-dimensional dense numerical vectors.
+* **Why**: Provides an optimal trade-off between semantic search accuracy, CPU inference speed, and small model size (80MB footprint).
+* **Alternative**: Use OpenAI `text-embedding-3-small` or large transformer models (`bge-large-en`).
+* **Why Not Alternative**: OpenAI API requires paid cloud access and external network calls; larger models consume excessive local RAM without significant gains for short abstracts.
+* **Tradeoff**: 384-dim vector space is slightly smaller than 1536-dim models, but handles 200-word research abstracts with exceptional semantic retrieval performance.
+
+---
+
+### Decision 028: Exclude High-Level Abstraction Frameworks (LangChain / LangGraph) in Phase 4
+* **Date**: 2026-08-28
+* **Decision**: Implement custom, first-principles RAG modules (`chunker.py`, `embeddings.py`, `vector_store.py`, `retriever.py`, `adapter.py`, `evidence.py`) without using LangChain or LangGraph.
+* **Why**: Builds deep, transparent understanding of underlying RAG mechanics (vector space geometry, cosine distance, metadata filtering, chunking strategies) without black-box framework abstractions.
+* **Alternative**: Use LangChain's `VectorStoreIndexWrapper` or `RetrievalQA`.
+* **Why Not Alternative**: High-level wrappers hide vector store operations and complicate custom metadata validation and scientific evidence packaging.
+* **Tradeoff**: Requires writing modular boilerplate code, but guarantees 100% code transparency and interview readiness.
+
+---
+
+### Decision 029: Stable Idempotent Chunk IDs (`{doc_id}_chunk_{i}`)
+* **Date**: 2026-08-28
+* **Decision**: Generate deterministic chunk IDs by combining document accession IDs with sequential chunk indices.
+* **Why**: Enables idempotent upserts into ChromaDB. Repeated ingestion pipeline runs update existing records in-place rather than inserting duplicate vector entries.
+* **Alternative**: Generate random UUIDs for each chunk during chunking.
+* **Why Not Alternative**: Random UUIDs create duplicate vector records every time the ingestion script is executed.
+* **Tradeoff**: Requires strictly unique document accession IDs in source JSONL, but prevents vector store corruption.
+
+
 
 
