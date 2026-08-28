@@ -334,6 +334,47 @@ Every major technical decision made in the **Music, Brain & Wellbeing** project 
 * **Why Not Alternative**: Violates medical safety standards and misrepresents observational research as clinical intervention.
 * **Tradeoff**: Limits LLM expression to preference and observational context, but ensures complete scientific and ethical compliance.
 
+---
+
+### Decision 034: Standalone Evaluation Layer Architecture (`src/evaluation/`)
+* **Date**: 2026-08-28
+* **Decision**: Implement Phase 6 as an independent evaluation layer that evaluates system outputs without modifying core production code in `src/models/`, `src/features/`, `src/recommendation/`, `src/spotify/`, `src/rag/`, or `src/explanation/`.
+* **Why**: Preserves architectural purity and ensures evaluation logic remains decoupled from production pipeline execution.
+* **Alternative**: Embed evaluation hooks and metric logging directly into production recommendation and RAG classes.
+* **Why Not Alternative**: Tight coupling litters core logic with evaluation dependencies and complicates maintenance.
+* **Tradeoff**: Requires passing system outputs into separate evaluator classes, but guarantees modular separation of concerns.
+
+---
+
+### Decision 035: Deliberate Exclusion of User Interaction Metrics (Precision, Recall, NDCG, MAP)
+* **Date**: 2026-08-28
+* **Decision**: Explicitly exclude Precision, Recall, NDCG, and MAP from recommendation evaluation due to lack of ground-truth user interaction logs.
+* **Why**: Offline NDCG and Precision require ground-truth user click/rating annotations. Synthetic stream logs lack explicit user feedback annotations; inventing synthetic ground truth would be scientifically dishonest.
+* **Alternative**: Generate synthetic binary ground-truth relevancy labels to compute NDCG.
+* **Why Not Alternative**: Synthetic ground-truth relevancy produces meaningless metrics that fail peer review.
+* **Tradeoff**: Excludes common recsys metrics, but maintains complete scientific integrity.
+
+---
+
+### Decision 036: Controlled Benchmark Query Datasets for RAG Evaluation
+* **Date**: 2026-08-28
+* **Decision**: Create a version-controlled benchmark dataset (`data/evaluation/rag_eval_queries.json`) mapping specific research queries to expected PMIDs to calculate Hit Rate @ K and MRR.
+* **Why**: Enables deterministic, repeatable information retrieval benchmarking over the local PubMed research corpus.
+* **Alternative**: Evaluate RAG retrieval solely using synthetic unannotated queries.
+* **Why Not Alternative**: Synthetic unannotated queries cannot evaluate retrieval correctness or reciprocal rank.
+* **Tradeoff**: Evaluates retrieval on a small controlled benchmark set, but provides transparent, reproducible accuracy metrics.
+
+---
+
+### Decision 037: Random Baseline Comparison for Recommendation Distance
+* **Date**: 2026-08-28
+* **Decision**: Evaluate recommendation vector distance against random catalog sampling to compute `Distance Improvement Over Random`.
+* **Why**: Establishes an empirical baseline proving that Euclidean similarity matching in standardized vector space significantly outperforms random selection (-0.62 feature distance reduction).
+* **Alternative**: Evaluate model vector distance in isolation without baseline comparison.
+* **Why Not Alternative**: Absolute distance values lack context without a baseline comparison.
+* **Tradeoff**: Requires running random sampling during evaluation, but provides clear quantitative proof of recommendation efficacy.
+
+
 
 
 

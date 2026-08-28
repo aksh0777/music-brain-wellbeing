@@ -1,0 +1,56 @@
+[
+  {
+    "persona": "acoustic_relaxing",
+    "description": "User seeking low-energy, slow-tempo, high-acousticness relaxing tracks.",
+    "user_id": "USR_EVAL_001",
+    "audio_feature_summary": {
+      "energy": 0.25,
+      "tempo": 75.0,
+      "acousticness": 0.85,
+      "danceability": 0.30,
+      "valence": 0.40,
+      "instrumentalness": 0.60
+    },
+    "listening_history_summary": {
+      "total_tracks": 35,
+      "avg_tracks_per_session": 5.0,
+      "top_genre": "Acoustic / Ambient"
+    }
+  },
+  {
+    "persona": "upbeat_energetic",
+    "description": "User seeking high-energy, fast-tempo, high-danceability tracks.",
+    "user_id": "USR_EVAL_002",
+    "audio_feature_summary": {
+      "energy": 0.85,
+      "tempo": 128.0,
+      "acousticness": 0.15,
+      "danceability": 0.80,
+      "valence": 0.75,
+      "instrumentalness": 0.05
+    },
+    "listening_history_summary": {
+      "total_tracks": 50,
+      "avg_tracks_per_session": 8.0,
+      "top_genre": "Pop / Electronic"
+    }
+  },
+  {
+    "persona": "ambient_focus",
+    "description": "User seeking instrumental focus music with moderate tempo and low energy.",
+    "user_id": "USR_EVAL_003",
+    "audio_feature_summary": {
+      "energy": 0.30,
+      "tempo": 90.0,
+      "acousticness": 0.70,
+      "danceability": 0.20,
+      "valence": 0.30,
+      "instrumentalness": 0.90
+    },
+    "listening_history_summary": {
+      "total_tracks": 40,
+      "avg_tracks_per_session": 6.0,
+      "top_genre": "Classical / Ambient"
+    }
+  }
+]

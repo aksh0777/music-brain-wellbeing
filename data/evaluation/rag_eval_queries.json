@@ -1,0 +1,30 @@
+[
+  {
+    "query_id": "Q_EVAL_001",
+    "query_text": "music therapy stress reduction RCT meta-analysis",
+    "target_topic": "Stress Reduction",
+    "expected_pmids": ["33176590"],
+    "expected_dois": ["10.1080/17437199.2020.1846580"]
+  },
+  {
+    "query_id": "Q_EVAL_002",
+    "query_text": "passive music listening anxiety systematic review",
+    "target_topic": "Anxiety",
+    "expected_pmids": ["34365216", "31167611"],
+    "expected_dois": ["10.1016/j.aenj.2021.03.003", "10.1016/j.jad.2019.05.023"]
+  },
+  {
+    "query_id": "Q_EVAL_003",
+    "query_text": "sad music listening emotional regulation physiological response",
+    "target_topic": "Emotional Regulation",
+    "expected_pmids": ["35714120"],
+    "expected_dois": ["10.1371/journal.pone.0269878"]
+  },
+  {
+    "query_id": "Q_EVAL_004",
+    "query_text": "ambient music sleep quality autonomic nervous system cortisol",
+    "target_topic": "Sleep & Autonomic Response",
+    "expected_pmids": ["38458383"],
+    "expected_dois": ["10.1111/jsr.14170"]
+  }
+]

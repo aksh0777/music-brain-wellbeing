@@ -52,8 +52,17 @@
    ├── End-to-End Pipeline Coordinator (src/explanation/explanation_generator.py)
    └── Executable Demo Notebook & Test Suite (notebooks/16_llm_explanation_demo.ipynb)
 
+7. Systematic Evaluation Framework (Phase 6)
+   ├── Controlled Evaluation Benchmarks (data/evaluation/controlled_profiles.json, rag_eval_queries.json)
+   ├── Evaluation Metric Utilities (src/evaluation/metrics.py)
+   ├── Recommendation Evaluator & Baseline Comparison (src/evaluation/recommendation_eval.py)
+   ├── RAG Research Retrieval Evaluator (src/evaluation/rag_eval.py)
+   ├── LLM Explanation & Grounding Evaluator (src/evaluation/llm_eval.py)
+   ├── End-to-End Pipeline Evaluator (src/evaluation/end_to_end_eval.py)
+   └── Executable Evaluation Notebook & Test Suite (notebooks/17_system_evaluation.ipynb)
+
 [Future Layers]
-7. FastAPI Serving Backend & Interactive Web UI (Phase 6 — Future)
+8. FastAPI Serving Backend & Interactive Web UI (Phase 7 — Future)
 ```
 
 ---
@@ -62,7 +71,7 @@
 
 - **Research Origin (MXMH Survey)**: The project originated with a supervised regression question: *Can music listening habits predict self-reported anxiety ($0-10$ scale)?* Using the MXMH dataset (736 records), we tuned a Decision Tree to `max_depth=3` (5-fold CV), achieving a modest Test $R^2 = 0.0636$ and Test RMSE = `2.7499`.
 - **Scientific Significance of Low $R^2$**: Explaining ~6.4% of the variance proved empirically that music habits alone cannot reliably predict or diagnose anxiety. Rather than a failure, this finding served as an essential scientific boundary that guided our pivot away from clinical prediction.
-- **Architectural Pivot to Music Intelligence**: We evolved the project toward understanding individual listening behavior via Spotify streams (30-min sessions, cyclical temporal features, K-Means acoustic profiles), explainable recommendation ranking, scientific RAG evidence retrieval, and grounded non-clinical LLM explanation generation.
+- **Architectural Pivot to Music Intelligence**: We evolved the project toward understanding individual listening behavior via Spotify streams (30-min sessions, cyclical temporal features, K-Means acoustic profiles), explainable recommendation ranking, scientific RAG evidence retrieval, grounded non-clinical LLM explanation generation, and systematic evaluation benchmarking.
 - **Data Boundary (No Row-Level Join)**: MXMH survey respondents, Spotify users, and PubMed research records are **completely separate data sources**. There is **no row-level join** across them.
 - **Acoustic Descriptors $\neq$ Clinical Moods**: Audio clusters (K-Means, $K=4$) measure physical sound properties (tempo, energy, acousticness). They are strictly labeled **"Acoustic Profiles"**, avoiding clinical diagnoses.
 - **Non-Causal Boundary**: Recommendations match user musical preferences and acoustic context. We **NEVER** claim *"Song X cures anxiety"*. Any anxiety relationship remains observational.
@@ -81,11 +90,12 @@ data/
   ├── processed/
   │   ├── mxmh_cleaned.csv               # Untouched cleaned survey dataset
   │   └── music/listening_history.csv    # Synthetic timestamped stream logs (data_type="synthetic/demo")
+  ├── evaluation/                        # Version-controlled benchmark profiles & queries
   └── vector_store/
       └── chroma/                        # Local persistent ChromaDB HNSW vector index
 docs/                                    # Technical guides, analysis docs, decision & learning logs
 docs/figures/                            # Execution plots (evaluation, complexity, cluster & rec summaries)
-notebooks/                               # Executable Jupyter notebooks (01 to 16)
+notebooks/                               # Executable Jupyter notebooks (01 to 17)
 src/
   ├── data/                              # Data loading and schema validation
   ├── features/                          # Scaling, sessionization, temporal encodings, clustering, user profiling
@@ -93,9 +103,9 @@ src/
   ├── spotify/                           # Spotify OAuth, client, adapter mapping, pipeline coordinator
   ├── rag/                               # Document chunker, embeddings, ChromaDB, retriever, adapter, evidence
   ├── explanation/                       # Schemas, LLM provider, prompt engineering, grounding validator, coordinator
-  ├── models/                            # Regression modeling pipelines
-  └── evaluation/                        # Evaluation metrics and residual diagnostic utilities
-tests/                                   # Unit test suite (53 unit tests passing cleanly)
+  ├── evaluation/                        # Metrics utilities, recommendation, RAG, LLM, and end-to-end evaluators
+  └── models/                            # Regression modeling pipelines
+tests/                                   # Unit test suite (64 unit tests passing cleanly)
 ```
 
 ---
@@ -112,13 +122,14 @@ tests/                                   # Unit test suite (53 unit tests passin
    cp .env.example .env
    # Edit .env with your SPOTIFY_CLIENT_ID and LLM_API_KEY
    ```
-3. Run the complete unit test suite (53 unit tests across Phase 1, 2, 3, 4, and 5):
+3. Run the complete unit test suite (64 unit tests across Phase 1, 2, 3, 4, 5, and 6):
    ```bash
    .venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
    ```
-4. Execute Phase 5 LLM explanation demonstration notebook:
+4. Execute Phase 6 systematic evaluation demonstration notebook:
    ```bash
-   .venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute notebooks/16_llm_explanation_demo.ipynb --output 16_llm_explanation_demo.ipynb
+   .venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute notebooks/17_system_evaluation.ipynb --output 17_system_evaluation.ipynb
    ```
+
 
 
