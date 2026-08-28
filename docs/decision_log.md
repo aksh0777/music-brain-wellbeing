@@ -294,6 +294,47 @@ Every major technical decision made in the **Music, Brain & Wellbeing** project 
 * **Why Not Alternative**: Random UUIDs create duplicate vector records every time the ingestion script is executed.
 * **Tradeoff**: Requires strictly unique document accession IDs in source JSONL, but prevents vector store corruption.
 
+---
+
+### Decision 030: Establish `LLMProvider` Abstract Interface for Vendor Decoupling
+* **Date**: 2026-08-28
+* **Decision**: Create an abstract base class `LLMProvider` defining `generate_explanation(system_prompt, user_prompt)` implemented by `DemoLLMProvider` and `GenericOpenAILLMProvider`.
+* **Why**: Decouples application explanation logic from specific LLM providers (OpenAI, Groq, Ollama, local models).
+* **Alternative**: Hardcode direct OpenAI Python SDK calls inside the explanation module.
+* **Why Not Alternative**: Tight coupling breaks offline unit testing, prevents swapping LLM backends, and introduces hard external library dependencies.
+* **Tradeoff**: Requires defining abstract base classes, but provides maximum architectural flexibility.
+
+---
+
+### Decision 031: Dual `DEMO` vs `REAL` LLM Execution Modes
+* **Date**: 2026-08-28
+* **Decision**: Implement a deterministic `DemoLLMProvider` that generates structured JSON explanations offline without API keys, alongside `GenericOpenAILLMProvider`.
+* **Why**: Allows unit test suites, CI/CD pipelines, and local demonstration notebooks to run deterministically without requiring paid API keys or external network connectivity.
+* **Alternative**: Require active API keys for all test runs.
+* **Why Not Alternative**: Causes automated unit test failures when network connectivity is unavailable or API tokens expire.
+* **Tradeoff**: Requires maintaining a mock provider implementation, but guarantees 100% test suite reliability.
+
+---
+
+### Decision 032: Programmatic Citation & Track ID Grounding Validator
+* **Date**: 2026-08-28
+* **Decision**: Build a deterministic `GroundingValidator` in `src/explanation/validation.py` that cross-checks cited PMIDs/DOIs against `EvidencePackage.sources` and track IDs against `recommendations`.
+* **Why**: Generative LLMs generate text stochastically and may hallucinate citations despite strict prompt instructions. Post-generation validation ensures ungrounded assertions are flagged before reaching users.
+* **Alternative**: Rely solely on system prompt instructions to eliminate hallucinations.
+* **Why Not Alternative**: System prompts reduce hallucination risk but cannot guarantee 100% citation accuracy across all LLM models.
+* **Tradeoff**: Introduces a minor validation processing step, but guarantees robust citation auditability.
+
+---
+
+### Decision 033: Enforce Strict Non-Clinical & Non-Causal Safety Guardrails
+* **Date**: 2026-08-28
+* **Decision**: Instruct the prompt engine and validator to prohibit clinical psychiatric terms (`"diagnose anxiety"`, `"cures anxiety"`, `"clinical treatment"`) and enforce non-causal disclaimers.
+* **Why**: Music recommendations provide preference compatibility and observational scientific context, NOT medical diagnoses or clinical therapies.
+* **Alternative**: Allow free-form medical advice generation if requested by users.
+* **Why Not Alternative**: Violates medical safety standards and misrepresents observational research as clinical intervention.
+* **Tradeoff**: Limits LLM expression to preference and observational context, but ensures complete scientific and ethical compliance.
+
+
 
 
 

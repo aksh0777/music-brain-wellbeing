@@ -333,6 +333,32 @@ Vector databases enforce strict primitives on payload metadata to optimize index
 ### INTERVIEW ANSWER
 "When persisting research paper metadata into local ChromaDB collections, vector insertion failed due to un-serialized list objects in document records. I diagnosed the type validation error in ChromaDB's storage engine and resolved it by implementing a metadata sanitization pre-processor that converts lists and complex objects into primitive scalar types (`authors_str`), ensuring clean, idempotent vector storage."
 
+---
+
+## Phase 5: Grounded Non-Clinical LLM Explanation Layer
+
+### Challenge: Handling Malformed JSON and Ungrounded LLM Citations Programmatically
+
+### WHAT
+Generative LLM responses occasionally returned malformed JSON blocks (such as markdown code block wrappers ```json ... ```) or ungrounded citation strings (PMIDs not present in the RAG `EvidencePackage`).
+
+### WHY
+Large Language Models generate text stochastically. Even when instructed to produce JSON, models may wrap payloads in markdown code blocks or hallucinate plausible PMIDs when prompt constraints are breached.
+
+### DIAGNOSIS
+During testing of raw LLM outputs, `json.loads()` threw `JSONDecodeError` on markdown-wrapped strings, and ungrounded PMIDs passed unvalidated into response payloads.
+
+### SOLUTION
+1. Implemented markdown string stripping (`clean_str.startswith("```json")`) and fallback JSON recovery in `ExplanationGenerator`.
+2. Implemented `GroundingValidator` in `src/explanation/validation.py` to cross-check cited PMIDs/DOIs against `request.evidence_package['sources']`, deducting grounding scores and appending explicit validation warnings when ungrounded citations are detected.
+
+### LEARNING
+Generative LLM outputs must be treated as untrusted inputs. Always wrap LLM response parsing in sanitization handlers and execute deterministic validation rules before passing data to user-facing applications.
+
+### INTERVIEW EXPLANATION
+"When building the LLM explanation layer, LLM outputs occasionally contained markdown formatting wrappers or hallucinated PMIDs not present in our RAG context. I diagnosed these failure modes and resolved them by implementing markdown JSON string sanitization in the coordinator and building a deterministic `GroundingValidator` that programmatically verifies citations against the retrieved evidence package before returning responses."
+
+
 
 
 
